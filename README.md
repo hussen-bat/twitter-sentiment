@@ -309,9 +309,4 @@ This project is open source and available for educational purposes.
 
 ---
 
-<p align="center">Made with ❤️ by <strong>Hussen Shaikh</strong></p>
-#   t w i t t e r - s e n t i m e n t  
- #   t w i t t e r - s e n t i m e n t  
- #   t w i t t e r - s e n t i m e n t  
- #   t w i t t e r - s e n t i m e n t  
- 
+<p align="center">Created by <strong>Hussen Shaikh</strong></p>
