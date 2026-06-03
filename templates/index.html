@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TweetSense — Twitter Sentiment Analyzer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #080b10;
+      --surface: #0e1318;
+      --border: #1c2530;
+      --border-bright: #2a3a4a;
+      --text: #e8edf2;
+      --muted: #5a6a7a;
+      --accent: #00d4ff;
+      --accent-dim: rgba(0, 212, 255, 0.12);
+      --positive: #00ff9d;
+      --positive-dim: rgba(0, 255, 157, 0.10);
+      --negative: #ff4466;
+      --negative-dim: rgba(255, 68, 102, 0.10);
+      --neutral: #ffcc44;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Syne', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0 1rem;
+      overflow-x: hidden;
+    }
+
+    /* Background grid */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+      background-size: 60px 60px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Radial glow */
+    body::after {
+      content: '';
+      position: fixed;
+      top: -20%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 800px;
+      height: 500px;
+      background: radial-gradient(ellipse, rgba(0,212,255,0.07) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .wrapper {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 720px;
+      padding: 3rem 0 5rem;
+    }
+
+    /* ── Header ── */
+    header {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+
+    .logo-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--accent-dim);
+      border: 1px solid rgba(0,212,255,0.25);
+      border-radius: 100px;
+      padding: 0.3rem 1rem;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--accent);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 1.5rem;
+    }
+
+    .logo-badge::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.8); }
+    }
+
+    h1 {
+      font-size: clamp(2.4rem, 6vw, 3.6rem);
+      font-weight: 800;
+      line-height: 1.05;
+      letter-spacing: -0.03em;
+      background: linear-gradient(135deg, #e8edf2 0%, #8ab0c8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    h1 span {
+      background: linear-gradient(135deg, var(--accent), #0088cc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitle {
+      margin-top: 0.75rem;
+      color: var(--muted);
+      font-size: 1rem;
+      font-weight: 400;
+      font-family: 'DM Mono', monospace;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      opacity: 0.5;
+    }
+
+    /* ── Textarea ── */
+    .input-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+
+    .input-label span {
+      font-size: 0.78rem;
+      font-family: 'DM Mono', monospace;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    #charCount {
+      font-size: 0.72rem;
+      font-family: 'DM Mono', monospace;
+      color: var(--muted);
+      transition: color 0.3s;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 130px;
+      background: var(--bg);
+      border: 1px solid var(--border-bright);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 0.95rem;
+      line-height: 1.7;
+      padding: 1rem 1.2rem;
+      resize: vertical;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      outline: none;
+    }
+
+    textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.1);
+    }
+
+    textarea::placeholder { color: var(--muted); }
+
+    /* ── Button ── */
+    .btn-row {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 1.25rem;
+    }
+
+    button[type="submit"] {
+      flex: 1;
+      background: var(--accent);
+      color: #000;
+      border: none;
+      border-radius: 10px;
+      padding: 0.85rem 1.5rem;
+      font-family: 'Syne', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    button[type="submit"]:hover {
+      background: #33ddff;
+      box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+    }
+
+    button[type="submit"]:active { transform: scale(0.98); }
+
+    .btn-clear {
+      background: transparent;
+      border: 1px solid var(--border-bright);
+      border-radius: 10px;
+      padding: 0.85rem 1.2rem;
+      color: var(--muted);
+      font-family: 'Syne', sans-serif;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-clear:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* ── Result ── */
+    .result-section {
+      margin-top: 1.75rem;
+      animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .result-card {
+      border-radius: 12px;
+      padding: 1.5rem;
+      border: 1px solid;
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .result-card.positive {
+      background: var(--positive-dim);
+      border-color: rgba(0, 255, 157, 0.3);
+    }
+
+    .result-card.negative {
+      background: var(--negative-dim);
+      border-color: rgba(255, 68, 102, 0.3);
+    }
+
+    .result-icon {
+      font-size: 2.8rem;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+
+    .result-info { flex: 1; }
+
+    .result-label {
+      font-size: 0.7rem;
+      font-family: 'DM Mono', monospace;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      margin-bottom: 0.25rem;
+    }
+
+    .result-sentiment {
+      font-size: 1.7rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .result-card.positive .result-sentiment { color: var(--positive); }
+    .result-card.negative .result-sentiment { color: var(--negative); }
+
+    /* Confidence bar */
+    .confidence-wrap {
+      margin-top: 0.75rem;
+    }
+
+    .confidence-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.35rem;
+    }
+
+    .confidence-label {
+      font-size: 0.7rem;
+      font-family: 'DM Mono', monospace;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .confidence-val {
+      font-size: 0.78rem;
+      font-family: 'DM Mono', monospace;
+      font-weight: 500;
+    }
+
+    .result-card.positive .confidence-val { color: var(--positive); }
+    .result-card.negative .confidence-val { color: var(--negative); }
+
+    .bar-bg {
+      height: 5px;
+      background: rgba(255,255,255,0.07);
+      border-radius: 100px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 100px;
+      transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .result-card.positive .bar-fill { background: var(--positive); }
+    .result-card.negative .bar-fill { background: var(--negative); }
+
+    /* ── Examples ── */
+    .examples-section {
+      margin-top: 2.5rem;
+    }
+
+    .examples-title {
+      font-size: 0.72rem;
+      font-family: 'DM Mono', monospace;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      margin-bottom: 0.9rem;
+    }
+
+    .examples-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.6rem;
+    }
+
+    @media (max-width: 500px) {
+      .examples-grid { grid-template-columns: 1fr; }
+    }
+
+    .example-chip {
+      background: var(--bg);
+      border: 1px solid var(--border-bright);
+      border-radius: 8px;
+      padding: 0.7rem 0.9rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: 'DM Mono', monospace;
+      line-height: 1.5;
+      text-align: left;
+    }
+
+    .example-chip:hover {
+      border-color: var(--accent);
+      color: var(--text);
+      background: var(--accent-dim);
+    }
+
+    .example-chip .chip-tag {
+      display: block;
+      font-size: 0.65rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 0.2rem;
+    }
+
+    .example-chip.pos .chip-tag { color: var(--positive); }
+    .example-chip.neg .chip-tag { color: var(--negative); }
+
+    /* ── Stats bar ── */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.75rem;
+      margin-top: 2.5rem;
+    }
+
+    .stat-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem;
+      text-align: center;
+    }
+
+    .stat-val {
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: var(--accent);
+      display: block;
+    }
+
+    .stat-desc {
+      font-size: 0.68rem;
+      font-family: 'DM Mono', monospace;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-top: 0.2rem;
+      display: block;
+    }
+
+    /* ── Footer ── */
+    footer {
+      margin-top: 3rem;
+      text-align: center;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+    }
+
+    footer a { color: var(--accent); text-decoration: none; }
+
+    /* Loading spinner */
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(0,0,0,0.3);
+      border-top-color: #000;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading .spinner { display: block; }
+    .loading .btn-text { display: none; }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+  <header>
+    <div class="logo-badge">ML Sentiment Analysis</div>
+    <h1>Tweet<span>Sense</span></h1>
+    <p class="subtitle">Logistic Regression · TF-IDF · 1.6M Tweets Trained</p>
+  </header>
+
+  <div class="card">
+    <form method="POST" action="/" id="sentimentForm">
+      <div class="input-label">
+        <span>// Enter tweet text</span>
+        <span id="charCount">0 / 280</span>
+      </div>
+      <textarea
+        name="tweet"
+        id="tweetInput"
+        placeholder="Type or paste a tweet to analyze its sentiment…"
+        maxlength="560"
+      >{{ tweet }}</textarea>
+
+      <div class="btn-row">
+        <button type="submit" id="analyzeBtn">
+          <span class="btn-text">⚡ Analyze Sentiment</span>
+          <span class="spinner"></span>
+        </button>
+        <button type="button" class="btn-clear" onclick="clearForm()">Clear</button>
+      </div>
+    </form>
+
+    {% if result %}
+    <div class="result-section">
+      <div class="result-card {{ result | lower }}">
+        <div class="result-icon">
+          {% if result == 'Positive' %}😊{% else %}😔{% endif %}
+        </div>
+        <div class="result-info">
+          <div class="result-label">Predicted Sentiment</div>
+          <div class="result-sentiment">{{ result }}</div>
+          {% if confidence %}
+          <div class="confidence-wrap">
+            <div class="confidence-row">
+              <span class="confidence-label">Confidence</span>
+              <span class="confidence-val">{{ confidence }}%</span>
+            </div>
+            <div class="bar-bg">
+              <div class="bar-fill" style="width: {{ confidence }}%"></div>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="examples-section">
+      <div class="examples-title">// Try an example</div>
+      <div class="examples-grid">
+        <button class="example-chip pos" onclick="fillExample('I absolutely love this new update! It makes everything so much easier and faster 🎉')">
+          <span class="chip-tag">Likely Positive</span>
+          Love this update! Makes everything faster 🎉
+        </button>
+        <button class="example-chip neg" onclick="fillExample('This is the worst experience I have ever had. Completely disappointed and frustrated.')">
+          <span class="chip-tag">Likely Negative</span>
+          Worst experience ever. Disappointed 😤
+        </button>
+        <button class="example-chip pos" onclick="fillExample('Just got promoted at work! So grateful for this amazing opportunity!')">
+          <span class="chip-tag">Likely Positive</span>
+          Just got promoted! So grateful 🙌
+        </button>
+        <button class="example-chip neg" onclick="fillExample('The app keeps crashing and nobody is helping me fix it. So annoying!')">
+          <span class="chip-tag">Likely Negative</span>
+          App keeps crashing, no help at all 😤
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-box">
+      <span class="stat-val">1.6M</span>
+      <span class="stat-desc">Training Tweets</span>
+    </div>
+    <div class="stat-box">
+      <span class="stat-val">~78%</span>
+      <span class="stat-desc">Model Accuracy</span>
+    </div>
+    <div class="stat-box">
+      <span class="stat-val">TF-IDF</span>
+      <span class="stat-desc">Vectorizer</span>
+    </div>
+  </div>
+
+  <footer>
+    Built with Flask · Logistic Regression · NLTK — Sentiment140 Dataset
+  </footer>
+</div>
+
+<script>
+  const textarea = document.getElementById('tweetInput');
+  const charCount = document.getElementById('charCount');
+  const form = document.getElementById('sentimentForm');
+  const btn = document.getElementById('analyzeBtn');
+
+  textarea.addEventListener('input', () => {
+    const len = textarea.value.length;
+    charCount.textContent = `${len} / 280`;
+    charCount.style.color = len > 260 ? '#ff4466' : len > 200 ? '#ffcc44' : '';
+  });
+
+  // Init count
+  charCount.textContent = `${textarea.value.length} / 280`;
+
+  form.addEventListener('submit', () => {
+    btn.classList.add('loading');
+  });
+
+  function fillExample(text) {
+    textarea.value = text;
+    charCount.textContent = `${text.length} / 280`;
+    textarea.focus();
+  }
+
+  function clearForm() {
+    textarea.value = '';
+    charCount.textContent = '0 / 280';
+    textarea.focus();
+  }
+</script>
+</body>
+</html>
