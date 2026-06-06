@@ -1,2 +1,7 @@
 twitter_data.csv
 .venv
+*.pem
+stop_server.sh
+start_server.sh
+Procfile
+install_dependencies.sh
