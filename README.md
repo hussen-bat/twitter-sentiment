@@ -77,13 +77,8 @@ Twitter-Sentiment-Analysis/
 ├── Twitter.ipynb             # Jupyter notebook (EDA + model training)
 ├── templates/
 │   └── index.html            # Frontend UI template
-├── scripts/
-│   ├── install_dependencies.sh  # AWS CodeDeploy install hook
-│   ├── start_server.sh          # AWS CodeDeploy start hook
-│   └── stop_server.sh           # AWS CodeDeploy stop hook
 ├── appspec.yml               # AWS CodeDeploy config
 ├── requirements.txt          # Python dependencies
-├── Procfile                  # Gunicorn start command
 ├── .gitignore                # Files excluded from Git tracking
 └── README.md                 # You are here!
 ```
@@ -98,8 +93,8 @@ Twitter-Sentiment-Analysis/
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/<your-username>/Twitter-Sentiment-Analysis.git
-cd Twitter-Sentiment-Analysis
+git clone https://github.com/hussen-bat/twitter-sentiment.git
+cd twitter-sentiment
 
 # 2. Create a virtual environment
 python -m venv venv
@@ -118,9 +113,6 @@ Open **http://localhost:5000** in your browser.
 
 ## ☁️ Deployment on AWS EC2
 
-> **Cost tip:** t3.micro costs ~$0.01–$0.02/hour. **Stop the instance when not in use** — you are only charged when it is running.
-
----
 
 ### Step 1 — Launch an EC2 Instance
 
@@ -169,8 +161,8 @@ sudo apt update && sudo apt upgrade -y
 sudo apt install python3-pip git -y
 
 # Clone your GitHub repository
-git clone https://github.com/<your-username>/Twitter-Sentiment-Analysis.git
-cd Twitter-Sentiment-Analysis
+git clone https://github.com/hussen-bat/twitter-sentiment.git
+cd twitter-sentiment
 
 # Install Python dependencies
 pip3 install -r requirements.txt
@@ -228,7 +220,7 @@ Each time you start the instance again, SSH in and re-run:
 ```bash
 ssh -i "your-key.pem" ubuntu@<NEW_PUBLIC_IP>
 cd /home/ubuntu/Twitter-Sentiment-Analysis
-nohup gunicorn run:app --bind 0.0.0.0:5000 > app.log 2>&1 &
+nohup gunicorn run:app --bind 0.0.0.0:5000 > &
 ```
 
 Or set up auto-start with systemd (optional but recommended):
